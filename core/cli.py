@@ -49,6 +49,8 @@ class UnifiedCompleter(Completer):
     def update_resources(self, resources: List):
         self.resources = resources
 
+    # the get completions function was already set up to work with the @ character? It's not something we set up in the tutorial I guess?
+    # this must be a convention of the Completer class from the prompt_toolkit package
     def get_completions(self, document, complete_event):
         text = document.text
         text_before_cursor = document.text_before_cursor

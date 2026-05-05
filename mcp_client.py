@@ -1,5 +1,8 @@
+from multiprocessing import Value
 import sys
 import asyncio
+import json
+from pydantic import AnyUrl
 from typing import Optional, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters, types
@@ -42,14 +45,18 @@ class MCPClient:
         return self._session
 
     async def list_tools(self) -> list[types.Tool]:
-        # TODO: Return a list of tools defined by the MCP server
-        return []
+        # get access to session, then list_tools is the rpc, I believe
+        # it runs the list_tools method on the server
+        # actually... maybe listing tools is something inherent to an mcp server, and not some RPC we built into it, since all we did was build tools so far
+        result = await self.session().list_tools()
+        return result.tools
 
     async def call_tool(
         self, tool_name: str, tool_input: dict
     ) -> types.CallToolResult | None:
-        # TODO: Call a particular tool and return the result
-        return None
+        # This is the actual RPC call to the server, then
+        result = await self.session().call_tool(tool_name, tool_input)
+        return result
 
     async def list_prompts(self) -> list[types.Prompt]:
         # TODO: Return a list of prompts defined by the MCP server
@@ -60,8 +67,19 @@ class MCPClient:
         return []
 
     async def read_resource(self, uri: str) -> Any:
-        # TODO: Read a resource, parse the contents and return it
-        return []
+        result = await self.session().read_resource(AnyUrl(uri))
+        resource = result.contents[0]
+
+        if isinstance(resource, types.TextResourceContents):
+            if resource.mimeType == "application/json":
+                return json.loads(resource.text)
+
+            return resource.text
+        else:
+            raise ValueError(f"Unknown resource type: {resource}")
+
+
+
 
     async def cleanup(self):
         await self._exit_stack.aclose()
@@ -82,8 +100,8 @@ async def main():
         command="uv",
         args=["run", "mcp_server.py"],
     ) as _client:
-        pass
-
+        result = await _client.list_tools()
+        print(result)
 
 if __name__ == "__main__":
     if sys.platform == "win32":
