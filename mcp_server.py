@@ -1,7 +1,8 @@
 # official python mcp server sdk
-from multiprocessing import Value
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
+from mcp.server.fastmcp.prompts import base
+
 
 mcp = FastMCP("DocumentMCP", log_level="ERROR")
 
@@ -60,8 +61,39 @@ def fetch_doc(doc_id: str) -> str:
         raise ValueError(f"Document with id {doc_id} not found")
     return docs[doc_id]
 
+@mcp.prompt(
+    name="format",
+    description="Rewrites the content of the document in markdown format"
+)
+def format_document(
+    doc_id: str = Field(description="The id of the document to format")
+) -> list[base.Message]:
+    prompt = f"""
+        Your goal is to reformat a document with markdown syntax.
 
-# TODO: Write a prompt to rewrite a doc in markdown format
+        The id of the document you need to reformat is:
+        <document_id>
+        {doc_id}
+        </document_id>
+
+        Please read the contents of the document above. Your task is to rewrite the entire document using markdown formatting, applying the following rules:
+
+        - Ensure all existing section titles or headings in the original document are formatted as appropriate Markdown headers (e.g., "#", "##", "###", etc.).
+        - Identify major topics or sections; use higher-level headers (e.g., "#") for document title or main headings, and lower levels ("##", "###") for subsections as needed.
+        - Use bullet points or numbered lists where appropriate.
+        - Convert any tables or lists in the original document to valid markdown syntax.
+        - Format code blocks with triple backticks and syntax highlighting if possible.
+        - Emphasize important terms with bold (**term**) or italics (*term*).
+        - Do not omit any content; retain all the information.
+        - The output should be only the reformatted document, with no explanation or comments.
+
+        Return only the rewritten document in markdown format.
+   
+        """
+
+    return [base.UserMessage(prompt)]
+
+
 # TODO: Write a prompt to summarize a doc
 
 
